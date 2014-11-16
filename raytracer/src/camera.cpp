@@ -8,23 +8,21 @@
 
 #include "scene.h"
 
+void Camera::setFrame(){
+    
+    w = glm::normalize(center-eye);
+    u = glm::normalize(glm::cross(w, up));
+    v = glm::normalize(glm::cross(u, w));
+}
+
 Ray Camera::generateRay(uvec2 pixel){
     
-    C = glm::normalize(center-eye); // C
-    A = glm::normalize(glm::cross(C, up)); // A = C x U
-    B = glm::normalize(glm::cross(A, C)); // B = A x C
+    float alpha, beta;
     
-    float dist = glm::length(center);
-    float aspectRatio = (float)scene->getWidth()/scene->getHeight();
-    float fovx = 2*atan(aspectRatio*tan(fovy/2));
+    alpha = tan(fovy*0.5f*PI/180) * aspectRatio * ((pixel[1] - (scene->getWidth()/2.0f)) / (scene->getWidth()/2.0f));
+    beta  = tan(fovy*0.5f*PI/180) * (((scene->getHeight()/2.0f) - pixel[0]) / (scene->getHeight()/2.0f));
     
-    vec3 V = B*dist*tan(fovy/2);
-    vec3 H = A*dist*tan(fovx/2);
-    
-    float sx = (float)pixel.y/(scene->getWidth()-1);
-    float sy =(float)pixel.x/(scene->getHeight()-1);
-    
-    vec3 rayDir = C + (2*sx - 1)*H - (2*sy - 1)*V;  // ndc2world
+    vec3 rayDir = alpha*u + beta*v + w;
     rayDir = glm::normalize(rayDir);
     
     return Ray(eye, rayDir);

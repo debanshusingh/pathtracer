@@ -15,8 +15,8 @@ protected:
     virtual Intersect intersectImpl(const Ray &ray) const;
 
 private:
-    glm::vec3 center_;
-    float radius_;
+    const glm::vec3 center_;
+    const float radius_;
 };
 
 #endif

@@ -62,11 +62,12 @@ inline bool fileExists (const string& name) {
 class Camera
 {
 public:
-    Camera(vec3 eye, vec3 center, vec3 up, float fovy): eye(eye), center(center), up(up), fovy(fovy){};
+    Camera(){};
+    void setFrame();
     Ray generateRay(uvec2 pixel);
     vec3 eye,center,up;
-    vec3 A,B,C;
-    float fovy,fovx;
+    vec3 u,v,w;
+    float fovy,aspectRatio;
 };
 
 class Film
@@ -94,7 +95,8 @@ class Raytracer
 {
 public:
     Raytracer(){}
-    vec3 trace(const Ray &r);
+    vec3 trace(const Ray &r, int depth);
+    bool inShadow(vec3 isxPos, vec3 lightPos);
 };
 
 class Scene
@@ -152,7 +154,7 @@ private:
     string inFilePath;
     Geometry* geometry;
     std::map<string,bool> geomTypes;
-    std::map<string,Material> matDict;
+    std::map<string, Material> matDict;
     string outFilePath;
 };
 

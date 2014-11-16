@@ -8,6 +8,15 @@
 
 using namespace std;
 
+class Material
+{
+public:
+    string matName;
+    vec3 diffColor, specColor;
+    float specExpo, ior;
+    bool isMirr, isTran;
+};
+
 // An abstract base class for geometry in the scene graph.
 class Geometry
 {
@@ -19,6 +28,7 @@ public:
     virtual ~Geometry();
     void load();
     void setColor(vec3 color);
+    void setMaterial(const Material &mat);
     void parseObj(string inFilePath);
     GLuint vao;
     GLuint vboPos;
@@ -64,7 +74,7 @@ public:
     }
 
     /// Compute an intersection with a WORLD-space ray.
-    Intersect intersect(const glm::mat4 &T, Ray ray_world) const;
+    Intersect intersect(const glm::mat4 &T, Ray ray_world);
     vec3 hit(Intersect isx) const;
     
     geometryType type_;
@@ -76,7 +86,7 @@ public:
     
     /// Compute an intersection with an OBJECT-LOCAL-space ray.
     virtual Intersect intersectImpl(const Ray &ray) const = 0;
-
+    Material material;
 };
 
 #endif

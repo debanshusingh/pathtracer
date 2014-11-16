@@ -12,14 +12,12 @@
 #include "Cube.h"
 #include "Mesh.h"
 #include "Intersect.h"
-#include "Material.h"
 
 Scene::Scene(){
     geomTypes["CUBE"] = false;
 	geomTypes["SPHERE"] = false;
 	geomTypes["CYLINDER"] = false;
 	geomTypes["MESH"] = false; 
-    camera = new Camera(vec3(0),vec3(0),vec3(-1),45); // initiate arbitrary camera 
 }
 
 void Scene::parseScene(string inFilePath){
@@ -38,6 +36,7 @@ void Scene::parseScene(string inFilePath){
 
                 vector<string> tokens = utilityCore::tokenizeString(line);
                 if(strcmp(tokens[0].c_str(), "CAMERA")==0){
+                    camera = new Camera(); // initiate arbitrary camera
                     
                     utilityCore::safeGetline(inFilePointer, line);
                     cout<<line<<endl;
@@ -46,6 +45,7 @@ void Scene::parseScene(string inFilePath){
                         WIDTH = atoi(tokens[1].c_str());
                         HEIGHT = atoi(tokens[2].c_str());
                     }
+                    camera->aspectRatio = (float)WIDTH/HEIGHT;
                     utilityCore::safeGetline(inFilePointer, line);
                     cout<<line<<endl;
                     tokens = utilityCore::tokenizeString(line);
@@ -70,6 +70,7 @@ void Scene::parseScene(string inFilePath){
                     if (strcmp(tokens[0].c_str(), "FOVY")==0){
                         camera->fovy = stof(tokens[1].c_str());
                     }
+                    camera->setFrame();
                 }
                 
                 else if(strcmp(tokens[0].c_str(), "LIGHT")==0){
@@ -88,6 +89,53 @@ void Scene::parseScene(string inFilePath){
                     }
                 }
                 
+                else if(strcmp(tokens[0].c_str(), "MAT")==0){
+                    
+                    tokens = utilityCore::tokenizeString(line);
+                    string matName = tokens[1];
+                    Material material;
+                    material.matName = matName;
+                    
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "DIFF")==0){
+                        material.diffColor = vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
+                    }
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "REFL")==0){
+                        material.specColor = vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
+                    }
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "EXPO")==0){
+                        material.specExpo = stof(tokens[1]);
+                    }
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "IOR")==0){
+                        material.ior = stof(tokens[1]);
+                    }
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "MIRR")==0){
+                        material.isMirr = bool(stoi(tokens[1]));
+                    }
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "TRAN")==0){
+                        material.isTran = bool(stoi(tokens[1]));
+                    }
+                    
+                    matDict[matName] = material;
+                }
+
                 else if(strcmp(tokens[0].c_str(), "NODE")==0){
                     // create node
                     // add to scene
@@ -170,7 +218,13 @@ void Scene::parseScene(string inFilePath){
                     utilityCore::safeGetline(inFilePointer, line);
                     cout<<line<<endl;
                     tokens = utilityCore::tokenizeString(line);
-                    if (strcmp(tokens[0].c_str(), "RGBA")==0){
+                    if (strcmp(tokens[0].c_str(), "MAT")==0){
+                        if (strcmp(tokens[1].c_str(), "null")!=0) {
+                            string nodeMatName = tokens[1].c_str();
+                            geometry->setMaterial(matDict[nodeMatName]);
+                        }
+                    }
+                    else if (strcmp(tokens[0].c_str(), "RGBA")==0){
                         if (strcmp(tokens[1].c_str(), "null")!=0) {
                             color = vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
                             geometry->setColor(color);
@@ -197,6 +251,7 @@ void Scene::parseScene(string inFilePath){
                 else if (strcmp(tokens[0].c_str(), "OUTPUT")==0){
                     outFilePath = tokens[1];
                 }
+                if (outFilePath=="") outFilePath = "render.bmp";
             }
         }
     }
@@ -212,12 +267,16 @@ void Scene::render(){
     
 //    cout<<"[raytracer] Progressive output is currently disabled"<<endl;
     
+//    uvec2 pixel = uvec2(400,1);
+//    Ray ray = camera->generateRay(pixel);
+//    vec3 color = raytracer->trace(ray, 2);
+
     for (int i = 0; i < HEIGHT; i++) {
 //        cout << "\r[raytracer] " << ((i+1)*100)/HEIGHT << "% completed       " << flush;
         for (int j = 0; j < WIDTH; j++) {
             uvec2 pixel = uvec2(i,j);
             Ray ray = camera->generateRay(pixel);
-            vec3 color = raytracer->trace(ray);
+            vec3 color = raytracer->trace(ray, 2);
             film->put(pixel, color);
         }
     }
@@ -498,9 +557,10 @@ void Node::draw(stack<mat4> transformations){
     const glm::mat4 modelInvTranspose = glm::inverse(glm::transpose(model));
     glUniformMatrix4fv(scene->unifModelInvTr, 1, GL_FALSE, &modelInvTranspose[0][0]);
 
-    glm::mat4 lookAt = glm::lookAt(scene->camera->eye, scene->camera->center, scene->camera->up);
-    glm::mat4 projection = glm::perspective<float>(scene->camera->fovy, scene->getWidth()/(float)scene->getHeight(), 0.1, 100.0) * lookAt;
-    glUniformMatrix4fv(scene->unifViewProj, 1, GL_FALSE, &projection[0][0]);
+    glm::mat4 view = glm::lookAt(scene->camera->eye, scene->camera->center, scene->camera->up);
+    glm::mat4 projection = glm::perspective<float>(scene->camera->fovy, (float)scene->getWidth()/scene->getHeight(), 0.1f, 100.0f);
+    glm::mat4 perspective = projection * view;
+    glUniformMatrix4fv(scene->unifViewProj, 1, GL_FALSE, &perspective[0][0]);
     
     glUniform3fv(scene->unifLightPos, 1, &scene->lightPos[0]);
     glUniform3fv(scene->unifLightColor, 1, &scene->lightColor[0]);
@@ -541,7 +601,9 @@ Intersect Node::intersect(stack<mat4> &transformations, const Ray &r){
     if (this->children.size() > 0){
         for(int i=0; i < children.size(); i++){
             Intersect childIsx = children.at(i)->intersect(transformations, r);
-            if ((isx.t==-1) || ((childIsx.t>0) && (childIsx.t < isx.t))) isx = childIsx;
+            if (isx.t==-1 || (childIsx.t < isx.t)){
+                if (childIsx.t>=0) isx = childIsx;
+            }
         }
     }
     transformations.pop();

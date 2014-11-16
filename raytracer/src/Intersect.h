@@ -3,7 +3,7 @@
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
-class Geometry;
+#include "Geometry.h"
 
 class Intersect {
 public:
@@ -14,6 +14,7 @@ public:
     glm::vec3 normal;
     float t;
     bool hit;
+    Geometry *geom;
 };
 
     // scratch-a-pixel

@@ -84,6 +84,11 @@ void Geometry::setColor(vec3 color){
     }
 }
 
+void Geometry::setMaterial(const Material &mat){
+    this->setColor(mat.diffColor);
+    this->material = mat;
+}
+
 void Geometry::parseObj(string inFilePath){
 
     vector<glm::vec3> temp_vertices;        // vertex buffer
@@ -134,7 +139,7 @@ void Geometry::parseObj(string inFilePath){
     }
 }
 
-Intersect Geometry::intersect(const glm::mat4 &T, Ray ray_world) const
+Intersect Geometry::intersect(const glm::mat4 &T, Ray ray_world)
 {
     // The input ray here is in WORLD-space. It may not be normalized!
     
@@ -164,6 +169,8 @@ Intersect Geometry::intersect(const glm::mat4 &T, Ray ray_world) const
         //     http://www.arcsynthesis.org/gltut/Illumination/Tut09%20Normal%20Transformation.html
         if (glm::sign(glm::dot(normal_world, ray_world.dir)) >= 0) normal_world *= -1.0f;
         isx.normal = glm::normalize(normal_world);
+        isx.hit = true;
+        isx.geom = this;
     }
     
     // The final output intersection data is in WORLD-space.
