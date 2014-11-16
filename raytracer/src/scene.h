@@ -86,7 +86,9 @@ class Ray
 {
 public:
     Ray(){}
-    Ray(const glm::vec3 p, const glm::vec3 d) : pos(p), dir(d){}
+    Ray(const glm::vec3 p, const glm::vec3 d) : pos(p), dir(d){ior=1.0f;}
+    Ray(const glm::vec3 p, const glm::vec3 d, const float ior) : pos(p), dir(d), ior(ior){}
+    float ior;
     vec3 pos;
     vec3 dir;
 };
@@ -150,7 +152,7 @@ public:
 private:
     ifstream inFilePointer;
     int WIDTH, HEIGHT;
-    int totalPrims;
+    int totalPrims, maxDepth;
     string inFilePath;
     Geometry* geometry;
     std::map<string,bool> geomTypes;

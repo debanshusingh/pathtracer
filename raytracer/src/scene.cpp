@@ -17,7 +17,8 @@ Scene::Scene(){
     geomTypes["CUBE"] = false;
 	geomTypes["SPHERE"] = false;
 	geomTypes["CYLINDER"] = false;
-	geomTypes["MESH"] = false; 
+	geomTypes["MESH"] = false;
+    maxDepth = 5;
 }
 
 void Scene::parseScene(string inFilePath){
@@ -267,16 +268,12 @@ void Scene::render(){
     
 //    cout<<"[raytracer] Progressive output is currently disabled"<<endl;
     
-//    uvec2 pixel = uvec2(400,1);
-//    Ray ray = camera->generateRay(pixel);
-//    vec3 color = raytracer->trace(ray, 2);
-
     for (int i = 0; i < HEIGHT; i++) {
 //        cout << "\r[raytracer] " << ((i+1)*100)/HEIGHT << "% completed       " << flush;
         for (int j = 0; j < WIDTH; j++) {
             uvec2 pixel = uvec2(i,j);
             Ray ray = camera->generateRay(pixel);
-            vec3 color = raytracer->trace(ray, 2);
+            vec3 color = raytracer->trace(ray, scene->maxDepth);
             film->put(pixel, color);
         }
     }

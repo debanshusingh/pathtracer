@@ -112,7 +112,7 @@ SHAPE cube
 MAT mat2
 
 NODE glass_sphere
-TRANSLATION 0 1.5 0
+TRANSLATION 2.5 2.5 0
 ROTATION 0 0 0
 SCALE 1.5 1.5 1.5
 CENTER 0 0 0
@@ -120,20 +120,20 @@ PARENT root
 SHAPE sphere
 MAT mat3
 
-NODE mirror_sphere
-TRANSLATION -2 5 2
-ROTATION 0 0 0
-SCALE 1.2 1.2 1.2
-CENTER 0 0 0
-PARENT root
-SHAPE sphere
-MAT mat4
+# NODE mirror_sphere
+# TRANSLATION -2 5 2
+# ROTATION 0 0 0
+# SCALE 1.2 1.2 1.2
+# CENTER 0 0 0
+# PARENT root
+# SHAPE sphere
+# MAT mat4
 
-NODE specular_sphere
-TRANSLATION 2 5 -2
-ROTATION 0 0 0
-SCALE 1.5 1.5 1.5
-CENTER 0 0 0
-PARENT root
-SHAPE sphere
-MAT mat5
+# NODE specular_sphere
+# TRANSLATION 2 5 -2
+# ROTATION 0 0 0
+# SCALE 1.5 1.5 1.5
+# CENTER 0 0 0
+# PARENT root
+# SHAPE sphere
+# MAT mat5
