@@ -17,6 +17,7 @@ vec3 Raytracer::trace(const Ray &r, int depth){
     
     scene->transformations.push(glm::mat4(1.0f));
     Intersect isx = scene->nodes[0]->intersect(scene->transformations, r);
+
     vec3 returnColor(0,0,0);
 
     if (!isx.hit){
@@ -24,27 +25,38 @@ vec3 Raytracer::trace(const Ray &r, int depth){
     }
     else {
         vec3 isxPos = r.pos + isx.t*r.dir;
+        vec3 reflRayDir = glm::normalize((r.dir - 2*glm::dot(r.dir,isx.normal)*isx.normal));
+        vec3 lightDir = glm::normalize(scene->lightPos - isxPos);
+        vec3 viewerDir = glm::normalize(scene->camera->eye - isxPos);
+        vec3 halfAngle = glm::normalize(lightDir+viewerDir);
         
+        vec3 reflRayOrigin = isxPos + 0.01f*isx.normal;
+        Ray reflRay = Ray(reflRayOrigin, reflRayDir);
+
+
         vec3 refr = blackColor;
         if (isx.geom->material.isTran) {
-            float ior1 = r.ior;
-            float ior2 = isx.geom->material.ior;
-            
-            if(ior1 != 1.0f) { // flip the ior
-                isx.normal *= -1.0f;
+            float ior1, ior2;
+            vec3 I = r.dir;
+            if(!r.inside) { // going into the medium
+                ior1 = 1.0f;
+                ior2 = isx.geom->material.ior;
+            }
+            else{ // going out of the medium
+                ior1 = isx.geom->material.ior;
                 ior2 = 1.0f;
             }
+            float eta = ior1/ior2;
             
-            float ior12 = ior1/ior2;
-            vec3 I = r.dir;
-            float nDotI = glm::dot(isx.normal,-I);
+            float nDotI = glm::dot(isx.normal,I);
             
-            float rootTerm = 1 - pow(ior12,2)*(1-pow(nDotI,2));
-            if (rootTerm<0) return refr; // Total Internal Refl
+            float rootTerm = 1 - pow(eta,2)*(1-pow(nDotI,2));
+            if (rootTerm<0)
+                refr = trace(reflRay, depth-1); // Total Internal Refl
             else {
-                vec3 refrRayDir = glm::normalize((-ior12*nDotI - sqrt(rootTerm))*isx.normal + ior12*I);
-                vec3 refrRayOrigin = isxPos+0.01f*refrRayDir;
-                Ray refrRay = Ray(refrRayOrigin, refrRayDir);
+                vec3 refrRayDir = glm::normalize(eta*I - (eta*nDotI + sqrt(rootTerm))*isx.normal);
+                vec3 refrRayOrigin = isxPos-0.01f*isx.normal;
+                Ray refrRay = Ray(refrRayOrigin, refrRayDir, !r.inside);
                 refr = trace(refrRay, depth-1);
             }
             
@@ -52,28 +64,30 @@ vec3 Raytracer::trace(const Ray &r, int depth){
         returnColor += refr;
         
         if (!inShadow(isxPos, scene->lightPos)){
-            vec3 reflDir = glm::normalize((r.dir - 2*glm::dot(r.dir,isx.normal)*isx.normal));
-            vec3 lightDir = glm::normalize(scene->lightPos - isxPos);
-            vec3 viewerDir = glm::normalize(scene->camera->eye - isxPos);
-            vec3 halfAngle = glm::normalize(lightDir+viewerDir);
             
-            returnColor += scene->lightColor*(isx.geom->material.diffColor*glm::dot(isx.normal,lightDir));
-            
-            vec3 spec = isx.geom->material.specColor;
-            if (isx.geom->material.isMirr) {
-                Ray reflRay = Ray(isxPos, reflDir);
-                spec = trace(reflRay, depth-1);
+            if (!isx.geom->material.isTran) {
+                // Diffuse
+                returnColor += scene->lightColor*
+                            isx.geom->material.diffColor*
+                            glm::clamp(glm::dot(isx.normal,lightDir),0.0f,1.0f);
+                
+                // Specular
+                if (!isx.geom->material.isMirr) {
+                    returnColor += scene->lightColor*
+                                isx.geom->material.specColor*0.6f*
+                                pow(glm::clamp(glm::dot(isx.normal,halfAngle),0.0f,1.0f),isx.geom->material.specExpo);
+
+                }
             }
-            returnColor += scene->lightColor*(spec*pow(std::max(glm::dot(reflDir,halfAngle),0.0f),isx.geom->material.specExpo));
 
         }
-        else return blackColor;
+        if (isx.geom->material.isMirr) {
+            returnColor += isx.geom->material.specColor*trace(reflRay, depth-1);
+        }
     }
     
-    for (int i=0; i<3; i++) {
-        returnColor[i] = utilityCore::clamp(returnColor[i], 0, 1);
-    }
-
+    // Clamp colors [0,1]
+    returnColor = glm::clamp(returnColor, vec3(0.0f), vec3(1.0f));
     return returnColor;
 }
 

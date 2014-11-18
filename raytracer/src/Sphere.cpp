@@ -122,9 +122,16 @@ Intersect Sphere::intersectImpl(const Ray &ray) const {
     
     if (!solveQuadratic(a, b, c, t0, t1)) isx.t = -1;
     else {
-        vec3 p = ray.pos + t0 * ray.dir;
+        if (t0 < 0) {
+            if (t1 > 0) {
+                isx.t = t1;
+            }
+            else isx.t = -1;
+        }
+        else isx.t = t0;
+
+        vec3 p = ray.pos + isx.t * ray.dir;
         vec3 normal_local = p - center_;
-        isx.t = t0;
         isx.normal = normal_local;
     }
     return isx;

@@ -57,7 +57,7 @@ void Scene::parseScene(string inFilePath){
                     cout<<line<<endl;
                     tokens = utilityCore::tokenizeString(line);
                     if (strcmp(tokens[0].c_str(), "VDIR")==0){
-                        camera->center = vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
+                        camera->center = camera->eye + vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
                     }
                     utilityCore::safeGetline(inFilePointer, line);
                     cout<<line<<endl;

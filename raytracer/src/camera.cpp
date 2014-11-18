@@ -11,6 +11,7 @@
 void Camera::setFrame(){
     
     w = glm::normalize(center-eye);
+    up = glm::normalize(up);
     u = glm::normalize(glm::cross(w, up));
     v = glm::normalize(glm::cross(u, w));
 }
