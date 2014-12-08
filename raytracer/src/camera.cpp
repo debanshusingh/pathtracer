@@ -16,7 +16,7 @@ void Camera::setFrame(){
     v = glm::normalize(glm::cross(u, w));
 }
 
-Ray Camera::generateRay(uvec2 pixel){
+Ray Camera::generateRay(vec2 pixel){
     
     float alpha, beta;
     
@@ -25,6 +25,6 @@ Ray Camera::generateRay(uvec2 pixel){
     
     vec3 rayDir = alpha*u + beta*v + w;
     rayDir = glm::normalize(rayDir);
-    
+
     return Ray(eye, rayDir);
 }

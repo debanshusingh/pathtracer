@@ -77,7 +77,7 @@ double Test_RayPolyIntersect(vec3 const& P0, vec3 const& V0,
     mesh.indices_.push_back(0);
     mesh.indices_.push_back(1);
     mesh.indices_.push_back(2);
-    
+
     return mesh.intersect(T, Ray(P0,V0)).t;
 }
 

@@ -17,13 +17,13 @@ vec3 Raytracer::trace(const Ray &r, int depth){
     
     scene->transformations.push(glm::mat4(1.0f));
     Intersect isx = scene->nodes[0]->intersect(scene->transformations, r);
-
     vec3 returnColor(0,0,0);
 
     if (!isx.hit){
         return blackColor; // return black // check later for parallel to light case
     }
     else {
+
         vec3 isxPos = r.pos + isx.t*r.dir;
         vec3 reflRayDir = glm::normalize((r.dir - 2*glm::dot(r.dir,isx.normal)*isx.normal));
         vec3 lightDir = glm::normalize(scene->lightPos - isxPos);
@@ -47,30 +47,40 @@ vec3 Raytracer::trace(const Ray &r, int depth){
                 ior2 = 1.0f;
             }
             float eta = ior1/ior2;
-            
             float nDotI = glm::dot(isx.normal,I);
-            
             float rootTerm = 1 - pow(eta,2)*(1-pow(nDotI,2));
-            if (rootTerm<0)
+
+            if (rootTerm < 0)
                 refr = trace(reflRay, depth-1); // Total Internal Refl
             else {
+
                 vec3 refrRayDir = glm::normalize(eta*I - (eta*nDotI + sqrt(rootTerm))*isx.normal);
                 vec3 refrRayOrigin = isxPos-0.01f*isx.normal;
                 Ray refrRay = Ray(refrRayOrigin, refrRayDir, !r.inside);
-                refr = trace(refrRay, depth-1);
+
+
+                // Fresnel - Schlick Approximation
+                float costhetaI = glm::dot(isx.normal,viewerDir);
+                float costhetaR = glm::dot(-isx.normal,refrRayDir);
+                float costheta = std::min(costhetaI, costhetaR); // max(thetaI,thetaR) => min(costhetaI,costhetaR)
+                float R0 = pow((eta-1)/(eta+1),2.0f);
+                float fresnel = R0 + (1-R0)*pow((1-costheta),5.0f);
+                
+                refr = (1-fresnel)*trace(refrRay, depth-1) + fresnel*trace(reflRay, depth-1); // double check this later
             }
             
         }
         returnColor += refr;
         
         if (!inShadow(isxPos, scene->lightPos)){
-            
+
             if (!isx.geom->material.isTran) {
                 // Diffuse
+
                 returnColor += scene->lightColor*
                             isx.geom->material.diffColor*
                             glm::clamp(glm::dot(isx.normal,lightDir),0.0f,1.0f);
-                
+
                 // Specular
                 if (!isx.geom->material.isMirr) {
                     returnColor += scene->lightColor*
@@ -94,9 +104,10 @@ vec3 Raytracer::trace(const Ray &r, int depth){
 bool Raytracer::inShadow(vec3 isxPos, vec3 lightPos){
     vec3 shadowRayDir = glm::normalize(lightPos-isxPos);
     float maxT = glm::length(lightPos-isxPos);
-    vec3 shadowRayOrigin = isxPos + 0.01f*shadowRayDir;
+    vec3 shadowRayOrigin = isxPos + 0.001f*shadowRayDir;
 
     Ray shadowRay = Ray(shadowRayOrigin, shadowRayDir);
+    
     Intersect shadowIsx = scene->nodes[0]->intersect(scene->transformations, shadowRay);
     vec3 shadowIsxPos = shadowRayOrigin + shadowIsx.t*shadowRayDir;
     float shadowIsxDist = glm::length(shadowIsxPos-shadowRayOrigin);

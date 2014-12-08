@@ -104,7 +104,7 @@ Intersect Cube::intersectImpl(const Ray &ray) const {
     
     vec3 isxPos = ray.pos + tnear*ray.dir;
     
-    float EPS = 0.001f;
+    float EPS = 0.0005f;
     
     if(abs(isxPos[0] - boxMin[0]) < EPS)
         isx.normal = vec3(-1,0,0);

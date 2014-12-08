@@ -28,6 +28,12 @@
 #include "utilities.h"
 #include "EasyBMP/EasyBMP.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_num_threads() 0
+#define omp_get_thread_num() 0
+#endif
 
 class Scene;
 class Node;
@@ -38,6 +44,7 @@ class Film;
 class Raytracer;
 class Intersect;
 class Material;
+class BVHNode;
 
 // Global scene
 extern Scene* scene;
@@ -64,7 +71,7 @@ class Camera
 public:
     Camera(){};
     void setFrame();
-    Ray generateRay(uvec2 pixel);
+    Ray generateRay(vec2 pixel);
     vec3 eye,center,up;
     vec3 u,v,w;
     float fovy,aspectRatio;
@@ -80,6 +87,17 @@ public:
     
 private:
     vector<vector<vec3>> pixels;
+};
+
+class BBox {
+public:
+    BBox(){}
+    BBox(vec3 b1, vec3 b2);
+    BBox combine(BBox other);
+    vec3 bBoxMin, bBoxMax;
+    vec3 midpoint(){return 0.5f*(bBoxMax + bBoxMin);}
+    bool isHit(Ray r) const;
+    
 };
 
 class Ray
@@ -99,20 +117,18 @@ public:
     Raytracer(){}
     vec3 trace(const Ray &r, int depth);
     bool inShadow(vec3 isxPos, vec3 lightPos);
+    std::atomic<int> numRayTrianglesTests;
 };
 
 class Scene
 {
 public:
     Scene();
-    void init();
     void draw();
     void load();
     void render();
     
     void addNode(Node* node);
-    void updateNode(Node* node);
-    void deleteNode(Node* node);
     int getTotalPrims(){return totalPrims;}
     int getHeight(){return HEIGHT;}
     int getWidth(){return WIDTH;}
@@ -126,6 +142,7 @@ public:
     string textFileRead(const char*);
     void initShader();
     void cleanup();
+    void parseObj(Geometry* geom, string inFilePath);
     
     GLuint shaderProgram;
     GLuint locationPos;
@@ -142,10 +159,10 @@ public:
     vec3 lightPos;
     vec3 lightColor;
     float fov;
-    Node* currentNode;
-    Node* previousNode;
     Camera* camera;
     Film* film;
+    BVHNode* tree;
+    
     Raytracer* raytracer;
     stack<mat4> transformations;
 
@@ -163,6 +180,7 @@ private:
 class Node
 {
 public:
+    Node(){}
     Node(string nodeName);
     Node(Geometry* geometry, string nodeName);
     Node(Node* parent, Geometry* geometry, string nodeName);
@@ -174,7 +192,6 @@ public:
     void draw(stack<mat4> transformations);
     void load();
     void initNode(Geometry* Geometry);
-    virtual void Update(int type, float n);
     void addChildNode(Node* ChildNode);
     void removeChildNode(Node* ChildNode);
     Node* getParentNode(){return parent;}
@@ -182,6 +199,7 @@ public:
     vector<Node*> getChildren(){return children;}
     void setTransformation(mat4 transf){transformation = transf;}
     mat4 getTransformation(){return transformation;}
+    mat4 getGlobalTransformation();
     Geometry* getGeometry(){return geometry;}
     string getNodeName(){return nodeName;}
     void setColor(vec3 nodeColor){tcolor = color = nodeColor;}
@@ -190,13 +208,14 @@ public:
     const bool isLeafNode(void) const;
     vec3 color;
     vec3 tcolor;
-
+    
 private:
     string nodeName;
     Node* parent;
     vector<Node*> children;
     mat4 transformation;
     Geometry* geometry;
+
 };
 
 #endif /* defined(__raytracer__scene__) */

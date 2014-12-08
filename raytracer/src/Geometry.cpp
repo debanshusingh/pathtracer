@@ -89,56 +89,6 @@ void Geometry::setMaterial(const Material &mat){
     this->material = mat;
 }
 
-void Geometry::parseObj(string inFilePath){
-
-    vector<glm::vec3> temp_vertices;        // vertex buffer
-    vector<GLuint> temp_indices;            // index buffer
-    vector<glm::vec3> temp_vertexNormals;   // normal buffer
-    
-    ifstream objFilePointer;
-    objFilePointer.open(inFilePath.c_str());
-    if (objFilePointer.is_open()){
-        cout<<"[raytracer] Reading OBJ from "<< inFilePath <<endl;
-        while (objFilePointer.good()) {
-            string line;
-            utilityCore::safeGetline(objFilePointer, line);
-            if ((line.find_first_not_of(" \t\r\n") != string::npos) && (line[0] != '#')) {
-                vector<string> tokens = utilityCore::tokenizeString(line);
-                if(strcmp(tokens[0].c_str(), "v")==0){
-                    temp_vertices.push_back(vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3])));
-                    temp_vertexNormals.push_back(vec3(0,0,0));
-                }
-                else if(strcmp(tokens[0].c_str(), "f")==0){
-                    unsigned int vertexIndex[3];
-                    for (int i=1; i<=3; i++) {
-                        string s;
-                        istringstream f(tokens[i]);
-                        getline(f, s, '/');
-                        
-                        GLuint trueIndex = static_cast<GLuint>(stoi(s)-1); // -1 to account for OBJ offset of +1
-                        vertexIndex[i-1] = trueIndex;
-                        temp_indices.push_back(trueIndex);
-                        vertices_.push_back(temp_vertices[trueIndex]);
-                    }
-                    vec3 faceNormal = glm::cross((temp_vertices[vertexIndex[1]] - temp_vertices[vertexIndex[0]]),
-                                                 (temp_vertices[vertexIndex[2]] - temp_vertices[vertexIndex[0]]));
-                    // add face_normal contribution to vertexNormal in a std:map and store trueindices in a vector
-                    for (int i=0; i<3; i++){
-                        normals_.push_back(faceNormal); // add facenormal value to each vertex
-                        temp_vertexNormals.at(vertexIndex[i]) += faceNormal;
-                    }
-                }
-            }
-        }
-    }
-    objFilePointer.close();
-    for ( int i=0; i<vertices_.size(); i++) {
-//        normals_.at(i) = glm::normalize(normals_.at(i)); // flat shading
-        normals_.at(i) = glm::normalize(temp_vertexNormals.at(temp_indices.at(i))); // smooth shading
-        indices_.push_back(i);
-    }
-}
-
 Intersect Geometry::intersect(const glm::mat4 &T, Ray ray_world)
 {
     // The input ray here is in WORLD-space. It may not be normalized!
@@ -185,3 +135,13 @@ vec3 Geometry::hit(Intersect itrsct) const {
     
     return finalColor;
 }
+
+BBox::BBox(vec3 m, vec3 M) {
+    for (int i = 0; i < 3; i ++) {
+        bBoxMin[i] = std::min(m[i], M[i]);
+        bBoxMax[i] = std::max(m[i], M[i]);
+    }
+}
+
+
+

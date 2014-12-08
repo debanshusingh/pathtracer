@@ -23,22 +23,20 @@ class Geometry
 public:
     // Enums for the types of geometry that your scene graph is required to contain.
     // Feel free to add more.
-    enum geometryType {CUBE, SPHERE, CYLINDER, MESH};
+    enum geometryType {CUBE, SPHERE, CYLINDER, MESH, TRIANGLE, BVHNODE};
     Geometry(geometryType);
-    virtual ~Geometry();
     void load();
     void setColor(vec3 color);
     void setMaterial(const Material &mat);
-    void parseObj(string inFilePath);
     GLuint vao;
     GLuint vboPos;
     GLuint vboCol;
     GLuint vboNor;
     GLuint vboIdx;
-    
-    // Function for building vertex data, i.e. vertices, colors, normals, indices.
-    // Implemented in Sphere and Cylinder.
-    virtual void buildGeometry() = 0;
+    BBox bbox;
+    vector<Geometry* > triangleList;
+    BVHNode* tree;
+
     
     // Getters
     const vector<glm::vec3>& getVertices() const
@@ -83,7 +81,11 @@ public:
     vector<glm::vec3> normals_;         // normal buffer
     vector<glm::vec3> colors_;          // color buffer
     vector<GLuint> indices_;      // index buffer
-    
+
+    virtual ~Geometry();
+    // Function for building vertex data, i.e. vertices, colors, normals, indices.
+    // Implemented in Sphere and Cylinder.
+    virtual void buildGeometry() = 0;
     /// Compute an intersection with an OBJECT-LOCAL-space ray.
     virtual Intersect intersectImpl(const Ray &ray) const = 0;
     Material material;

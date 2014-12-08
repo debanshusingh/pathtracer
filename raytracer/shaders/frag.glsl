@@ -20,8 +20,7 @@ void main()
 
     float Ks = 0.8;
     float Kd = 0.8;
-    float roughness = .2;
-    float gaussConstant = 100;
+    float roughness = 10;
 
     vec4 Nn = normalize(fs_Normal);
     vec4 Ln = normalize(fs_LightVector);
@@ -29,23 +28,11 @@ void main()
     vec4 Hn = normalize(Ln+Vn);
 
     float NdotV = dot(Nn,Vn);
-    float NdotL = max(dot(Nn,Ln), 0.0);
-    float NdotH = dot(Nn,Hn);
+    float NdotL = clamp(dot(Nn,Ln), 0.0,1.0);
+    float NdotH = clamp(dot(Nn,Hn), 0.0,1.0);
     float VdotH = dot(Vn,Hn);
     
-    float alpha = acos(NdotH);
-    
-    float fresnel = 0.8 + 0.2*pow(1.0 - VdotH, 5.0);    // fresnel - schlick's approximation
-    
-    //    float roughnessDist = gaussConstant*exp(-(alpha*alpha)/(roughness*roughness));    // roughness - gaussian distribution
-
-    float r1 = 1.0 / ( 4.0 * roughness*roughness * pow(NdotH, 4.0)); // roughness - beckmann distribution
-    float r2 = (NdotH*NdotH - 1.0) / (roughness*roughness * NdotH*NdotH);
-    float roughnessDist = r1 * exp(r2);
-    
-    float geomAtt = min(1, min((2*NdotH*NdotV/VdotH),(2*NdotH*NdotL/VdotH)));     // geomteric attenuation
-    
-    float specularTerm = (fresnel*roughnessDist*geomAtt)/(NdotV*NdotL);
+    float specularTerm = pow(NdotH,roughness);
     specularTerm = clamp(specularTerm, 0, 1);
     
     float diffuseTerm = clamp(NdotL, 0, 1);

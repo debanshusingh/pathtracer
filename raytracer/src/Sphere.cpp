@@ -102,17 +102,40 @@ void Sphere::buildGeometry()
     indices_.push_back(bottom - 1);
     indices_.push_back(offset);
 
+    // set bbox 
+    
+    vec3 extents[8];
+    extents[0] = (center_ + vec3( radius_,  radius_,  radius_));
+    extents[1] = (center_ + vec3( radius_,  radius_, -radius_));
+    extents[2] = (center_ + vec3( radius_, -radius_,  radius_));
+    extents[3] = (center_ + vec3( radius_, -radius_, -radius_));
+    extents[4] = (center_ + vec3(-radius_,  radius_,  radius_));
+    extents[5] = (center_ + vec3(-radius_,  radius_, -radius_));
+    extents[6] = (center_ + vec3(-radius_, -radius_,  radius_));
+    extents[7] = (center_ + vec3(-radius_, -radius_, -radius_));
+    
+    vec3 m, M;
+    m = extents[0];
+    M = extents[0];
+    for (int i = 0; i < 3; i ++) {
+        for (int j = 1; j < 8; j ++) {
+            m[i] = std::min(m[i], extents[j][i]);
+            M[i] = std::max(M[i], extents[j][i]);
+        }
+    }
+    bbox = BBox(m, M);
 }
 
 Intersect Sphere::intersectImpl(const Ray &ray) const {
     
+    Intersect isx;
+
     // break the ray into position and direction
     // ray p = p_o + p_d (t)
     
     // a sphere is parametrically defined by radius and position
     // (point - Center) * (point - center ) - radius ^2 = 0
 
-    Intersect isx;
 
     float a = glm::dot(ray.dir, ray.dir);
     float b = 2 * glm::dot(ray.dir, (ray.pos - center_));

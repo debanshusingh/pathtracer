@@ -12,6 +12,8 @@
 #include "Cube.h"
 #include "Mesh.h"
 #include "Intersect.h"
+#include "bvh.h"
+#include <iomanip>
 
 Scene::Scene(){
     geomTypes["CUBE"] = false;
@@ -72,24 +74,27 @@ void Scene::parseScene(string inFilePath){
                         camera->fovy = stof(tokens[1].c_str());
                     }
                     camera->setFrame();
-                }
-                
-                else if(strcmp(tokens[0].c_str(), "LIGHT")==0){
 
-                    utilityCore::safeGetline(inFilePointer, line);
-                    cout<<line<<endl;
-                    tokens = utilityCore::tokenizeString(line);
-                    if (strcmp(tokens[0].c_str(), "LPOS")==0){
-                        lightPos = vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
-                    }
-                    utilityCore::safeGetline(inFilePointer, line);
-                    cout<<line<<endl;
-                    tokens = utilityCore::tokenizeString(line);
-                    if (strcmp(tokens[0].c_str(), "LCOL")==0){
-                        lightColor = vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
-                    }
+                    //  enable preview lighting
+                    lightPos = vec3(0,9,0);
+                    lightColor = vec3(1,1,1);
+
                 }
                 
+//                else if(strcmp(tokens[0].c_str(), "LIGHT")==0){
+//
+//                    utilityCore::safeGetline(inFilePointer, line);
+//                    cout<<line<<endl;
+//                    tokens = utilityCore::tokenizeString(line);
+//                    if (strcmp(tokens[0].c_str(), "LPOS")==0){
+//                    }
+//                    utilityCore::safeGetline(inFilePointer, line);
+//                    cout<<line<<endl;
+//                    tokens = utilityCore::tokenizeString(line);
+//                    if (strcmp(tokens[0].c_str(), "LCOL")==0){
+//                    }
+//                }
+
                 else if(strcmp(tokens[0].c_str(), "MAT")==0){
                     
                     tokens = utilityCore::tokenizeString(line);
@@ -211,8 +216,10 @@ void Scene::parseScene(string inFilePath){
                             tokens = utilityCore::tokenizeString(line);
                             if (strcmp(tokens[0].c_str(), "FILE")==0){
                                 string objFilePath = "scenes/" + tokens[1];
-                                geometry->parseObj(objFilePath);
+                                parseObj(geometry, objFilePath);
                             }
+                            geometry->tree = createBVH(geometry->triangleList, 0);
+                            cout<<"[raytracer] Built BVH acceleration structure"<<endl;
                         }
                     }
                     
@@ -261,24 +268,37 @@ void Scene::parseScene(string inFilePath){
 
 void Scene::render(){
     
+    
     // for all pixels generate rayDir
-    // check for ray-box(voxelspace) intersection
+    // check for ray-box intersection
+    clock_t timeStart = clock();
     film = new Film();
     raytracer = new Raytracer();
-    
-//    cout<<"[raytracer] Progressive output is currently disabled"<<endl;
+    int superSamples = 4;
     
     for (int i = 0; i < HEIGHT; i++) {
-//        cout << "\r[raytracer] " << ((i+1)*100)/HEIGHT << "% completed       " << flush;
+        cout << "\r[raytracer] " << ((i+1)*100)/HEIGHT << "% completed       " << flush;
+        #pragma omp parallel for
         for (int j = 0; j < WIDTH; j++) {
+            vec3 pixelColor(0,0,0);
+            for (int k =0; k<superSamples; k++){
+                float randJitter = (float) rand()/RAND_MAX;
+                vec2 pixel = vec2(i+randJitter, j+randJitter);
+                Ray ray = camera->generateRay(pixel);
+                pixelColor += raytracer->trace(ray, scene->maxDepth);
+            }
+            pixelColor /= superSamples;
+            
             uvec2 pixel = uvec2(i,j);
-            Ray ray = camera->generateRay(pixel);
-            vec3 color = raytracer->trace(ray, scene->maxDepth);
-            film->put(pixel, color);
+            film->put(pixel, pixelColor);
         }
     }
     film->writeImage(outFilePath);
+    
+    clock_t timeEnd = clock();
     cout<<"[raytracer] Render Successful. Output Image Path - "<<outFilePath<<endl;
+    cout<<"[raytracer] Render time - "<< setprecision(5) << (float)(timeEnd - timeStart) / CLOCKS_PER_SEC << " (sec)\n"<<endl;
+    
 }
 
 void Scene::addNode(Node* node)
@@ -503,23 +523,8 @@ void Node::removeChildNode(Node* ChildNode)
     }
 }
 
-void Node::Update(int type, float n)
-{
-    if(!children.empty())
-    {
-        for(GLuint i = 0; i < children.size(); ++i)
-        {
-            if(children[i] != NULL)
-            {
-                children[i]->Update(type, n);
-            }
-        }
-    }
-}
-
 void Node::load(){
     if (this->geometry != NULL) {
-//        cout<<this->nodeName<<endl;
         this->geometry->load();
     }
     if (this->children.size() > 0){
@@ -607,6 +612,13 @@ Intersect Node::intersect(stack<mat4> &transformations, const Ray &r){
     return isx;
 }
 
+mat4 Node::getGlobalTransformation(){
+    if (this->parent == NULL) {
+        return mat4(1.0f);
+    }
+    else return this->transformation*this->getParentNode()->getGlobalTransformation();
+}
+
 const bool Node::isRootNode(void) const
 {
     return (parent == NULL);
@@ -615,6 +627,119 @@ const bool Node::isRootNode(void) const
 const bool Node::isLeafNode(void) const
 {
     return (children.size() == 0);
+}
+
+BBox BBox::combine(BBox other){
+    vec3 m, M;
+    for (int i = 0; i < 3; i ++) {
+        m[i] = std::min(this->bBoxMin[i], other.bBoxMin[i]);
+        M[i] = std::max(this->bBoxMax[i], other.bBoxMax[i]);
+    }
+    return BBox(m, M);
+}
+
+bool BBox::isHit(Ray ray) const{
+
+    float tnear = - numeric_limits<float>::max();
+    float tfar = numeric_limits<float>::max();
+    float t1,t2,temp;
+
+    for(int i =0 ;i < 3; i++){
+        if(ray.dir[i] == 0){
+            if(ray.pos[i] < bBoxMin[i] || ray.pos[i] > bBoxMax[i])
+                return false;
+        }
+        else{
+            t1 = (bBoxMin[i] - ray.pos[i])/ray.dir[i];
+            t2 = (bBoxMax[i] - ray.pos[i])/ray.dir[i];
+            if(t1 > t2){
+                temp = t1;
+                t1 = t2;
+                t2 = temp;
+            }
+            if(t1 > tnear)
+                tnear = t1;
+            if(t2 < tfar)
+                tfar = t2;
+            if(tnear > tfar)
+                return false;
+            if(tfar < 0)
+                return false;
+        }
+    }
+    return true;
+}
+
+void Scene::parseObj(Geometry* geom, string inFilePath){
+    
+//    if code reaches here, it means we have a mesh
+    
+    vector<glm::vec3> temp_vertices;        // vertex buffer
+    vector<GLuint> temp_indices;            // index buffer
+    vector<glm::vec3> temp_vertexNormals;   // normal buffer
+    
+    ifstream objFilePointer;
+    objFilePointer.open(inFilePath.c_str());
+    if (objFilePointer.is_open()){
+        cout<<"[raytracer] Reading OBJ from "<< inFilePath <<endl;
+        while (objFilePointer.good()) {
+            string line;
+            utilityCore::safeGetline(objFilePointer, line);
+            if ((line.find_first_not_of(" \t\r\n") != string::npos) && (line[0] != '#')) {
+                vector<string> tokens = utilityCore::tokenizeString(line);
+                if(strcmp(tokens[0].c_str(), "v")==0){
+                    temp_vertices.push_back(vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3])));
+                    temp_vertexNormals.push_back(vec3(0,0,0));
+                }
+                else if(strcmp(tokens[0].c_str(), "f")==0){
+                    unsigned int vertexIndex[3];
+                    for (int i=1; i<=3; i++) {
+                        string s;
+                        istringstream f(tokens[i]);
+                        getline(f, s, '/');
+                        
+                        GLuint trueIndex = static_cast<GLuint>(stoi(s)-1); // -1 to account for OBJ offset of +1
+                        vertexIndex[i-1] = trueIndex;
+                        temp_indices.push_back(trueIndex);
+                        geom->vertices_.push_back(temp_vertices[trueIndex]);
+                    }
+                    vec3 faceNormal = glm::cross((temp_vertices[vertexIndex[1]] - temp_vertices[vertexIndex[0]]),
+                                                 (temp_vertices[vertexIndex[2]] - temp_vertices[vertexIndex[0]]));
+                    // add face_normal contribution to vertexNormal in a std:map and store trueindices in a vector
+                    for (int i=0; i<3; i++){
+                        geom->normals_.push_back(faceNormal); // add facenormal value to each vertex
+                        temp_vertexNormals.at(vertexIndex[i]) += faceNormal;
+                    }
+                }
+            }
+        }
+    }
+    objFilePointer.close();
+
+    for ( int i=0; i<geom->vertices_.size(); i++) {
+        //        normals_.at(i) = glm::normalize(normals_.at(i)); // flat shading
+        geom->normals_.at(i) = glm::normalize(temp_vertexNormals.at(temp_indices.at(i))); // smooth shading
+        geom->indices_.push_back(i);
+    }
+
+    unsigned int trianglesInMesh = geom->getIndexCount()/3;
+    for (int i=0; i<trianglesInMesh; i++) {
+        vec3 v0 = geom->vertices_.at(geom->indices_.at(3*i));
+        vec3 v1 = geom->vertices_.at(geom->indices_.at(3*i+1));
+        vec3 v2 = geom->vertices_.at(geom->indices_.at(3*i+2));
+        
+        vec3 boxMin, boxMax;
+        for(int i=0; i<3; i++){
+            boxMin[i] = std::min(v0[i], std::min(v1[i],v2[i]));
+            boxMax[i] = std::max(v0[i], std::max(v1[i],v2[i]));
+        }
+        BBox triBbox = BBox(boxMin, boxMax);
+        Triangle* tri = new Triangle(v0, v1, v2);
+        tri->bbox = triBbox;
+
+        geom->triangleList.push_back(tri);
+    }
+    
 }
 
 Film::Film(){

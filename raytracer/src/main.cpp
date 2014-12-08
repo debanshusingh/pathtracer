@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
     scene = new Scene();
     scene->parseScene(argv[1]);
-    
+
     if(!glfwOpenWindow(scene->getWidth(), scene->getHeight(), 8, 8, 8, 8, 24, 0, GLFW_WINDOW))
         throw std::runtime_error("glfwOpenWindow failed. Can your hardware handle OpenGL 3.2?");
 
@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 
 	scene->initShader();
     scene->load();
-    RunTests();
+//    RunTests();
 
     // run while the window is open
     while(glfwGetWindowParam(GLFW_OPENED)){
