@@ -1,8 +1,6 @@
-===========
+=================
 Pathtracer
-===========
-
-Assignment HW3c
+=================
 Created by Debanshu Singh
 12/08/2014
 
@@ -16,7 +14,7 @@ Extra parameter for scene file to enable monte carlo
 MONTECARLO 1
 
 =================
-raytracer Features
+Features
 =================
 5.1 OpenMP - implemented in Scene::render function
 5.2 Anti-aliasing - 4x Jittered Super-Sampling
@@ -29,10 +27,7 @@ raytracer Features
 	With    OpenMP - 10.3s
 	Without OpenMP - 36.2s
 
-==============================
-CONSIDERATION FOR EXTRA CREDIT
-==============================
-- Cross Platform Compatible. thirdparty folder includes libraries for building on OSX/WINDOWS
+6.0 Cross Platform Compatible. thirdparty folder includes libraries for building on OSX/WINDOWS
 
 6.1 [Monte Carlo] (EXTRA CREDIT) ray.cpp
 	- Indirect Illumination
