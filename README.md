@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ===========
 Scene Graph
 ===========
@@ -25,13 +24,13 @@ MONTECARLO 1
 =================
 raytracer Features
 =================
-5.1 OpenMP	
+5.1 OpenMP - implemented in Scene::render function
 5.2 Anti-aliasing - 4x Jittered Super-Sampling
 5.3 Area Lights & Soft Shadows
 	----------------------
 	|Performance Analysis| 
 	----------------------
-	Scene - ${PROJECT_DIR}/scenes/dragon.txt
+	Scene - ${PROJECT_DIR}/scenes/dragon_arealights.txt
 	Image - dragon_arealights.bmp
 	With    OpenMP - 10.3s
 	Without OpenMP - 36.2s
@@ -41,17 +40,16 @@ CONSIDERATION FOR EXTRA CREDIT
 ==============================
 - Cross Platform Compatible. thirdparty folder includes libraries for building on OSX/WINDOWS
 
-6.1 [Monte Carlo] (EXTRA CREDIT) 
+6.1 [Monte Carlo] (EXTRA CREDIT) ray.cpp
 	- Indirect Illumination
 	----------------------
 	|Performance Analysis| 
 	----------------------
 	Scene - ${PROJECT_DIR}/scenes/montecarlo.txt
 	Image - montecarlo_cornell.bmp
-	With    OpenMP - 
-	Without OpenMP - 486s
+	With 200 iterations - 320s
 	
-6.3 [Acceleration] (EXTRA CREDIT) 
+6.3 [Acceleration] (EXTRA CREDIT) bvh.h
     - Bounding Volume Hierarchy (BVH)
     - AABB top-down construction
     - Median Cut Partitioning with Rotating Axis Splits (based on this paper - http://gamma.cs.unc.edu/BVH/paper_rt06.pdf)
@@ -82,6 +80,3 @@ class Mesh
     - added BVH creation (EXTRA CREDIT)
 class Camera
     - provides camera information for calculating lookAt
-=======
-# pathtracer
->>>>>>> 8d36f72d790bab3b24278f9d0b37799b4e8c2d82
