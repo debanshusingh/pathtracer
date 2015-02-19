@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ===========
 Scene Graph
 ===========
@@ -81,3 +82,6 @@ class Mesh
     - added BVH creation (EXTRA CREDIT)
 class Camera
     - provides camera information for calculating lookAt
+=======
+# pathtracer
+>>>>>>> 8d36f72d790bab3b24278f9d0b37799b4e8c2d82
