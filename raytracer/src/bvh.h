@@ -29,10 +29,15 @@ void partition(vector<Geometry *> &nodes, vec3 mid, int axis,
     node_itr i = nodes.begin();
     node_itr end = nodes.end();
     for (; i != end; i ++) {
-        if ((*i)->bbox.midpoint()[axis] < mid[axis])
+        if ((*i)->bbox.bBoxMax[axis] < mid[axis])
             left.push_back(*i);
         else
             right.push_back(*i);
+        // recursion doesn't converge - why? - think about tree height
+//        else if ((*i)->bbox.bBoxMin[axis] < mid[axis] && (*i)->bbox.bBoxMax[axis] > mid[axis]){
+//            left.push_back(*i);
+//            right.push_back(*i);
+//        }
     }
     if (left.size() == nodes.size()) {
         right.push_back(left.back());
@@ -43,7 +48,6 @@ void partition(vector<Geometry *> &nodes, vec3 mid, int axis,
         right.pop_back();
     }
 }
-
 BVHNode* createBVH(vector<Geometry* > &triangleList, int axis) {
     int n = (int)triangleList.size();
 
@@ -57,13 +61,13 @@ BVHNode* createBVH(vector<Geometry* > &triangleList, int axis) {
     } else {
         BBox b = combineBoundingBoxes(triangleList);
         vec3 mid = b.midpoint();
-        vector<Geometry *> l, r;
-        partition(triangleList, mid, axis, l, r);
-        BVHNode *lt, *rt;
-        lt = createBVH(l, (axis + 1) % 3);
-        rt = createBVH(r, (axis + 1) % 3);
+        vector<Geometry *> leftList, rightList;
+        partition(triangleList, mid, axis, leftList, rightList);
+        BVHNode *leftTree, *rightTree;
+        leftTree = createBVH(leftList, (axis + 1) % 3);
+        rightTree = createBVH(rightList, (axis + 1) % 3);
 //        utilityCore::printVec3(b.bBoxMax);
-        return new BVHNode(b, lt, rt);
+        return new BVHNode(b, leftTree, rightTree);
     }
 }
 

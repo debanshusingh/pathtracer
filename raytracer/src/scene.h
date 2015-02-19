@@ -29,10 +29,9 @@
 #include "EasyBMP/EasyBMP.h"
 
 #ifdef _OPENMP
-#include <omp.h>
+	#include <omp.h>
 #else
-#define omp_get_num_threads() 0
-#define omp_get_thread_num() 0
+	#define omp_get_num_threads() 0
 #endif
 
 class Scene;
@@ -103,21 +102,24 @@ public:
 class Ray
 {
 public:
-    Ray(){}
-    Ray(const glm::vec3 p, const glm::vec3 d) : pos(p), dir(d), inside(false){}
-    Ray(const glm::vec3 p, const glm::vec3 d, bool inside) : pos(p), dir(d), inside(inside){}
+    Ray(){transmittance = vec3(1,1,1);}
+    Ray(const glm::vec3 p, const glm::vec3 d) : pos(p), dir(d), inside(false){transmittance = vec3(1,1,1);}
+    Ray(const glm::vec3 p, const glm::vec3 d, const glm::vec3 t) : pos(p), dir(d), transmittance(t){}
+    Ray(const glm::vec3 p, const glm::vec3 d, bool inside) : pos(p), dir(d), inside(inside){transmittance = vec3(1,1,1);}
+    Ray(const glm::vec3 p, const glm::vec3 d, bool inside, const glm::vec3 t) : pos(p), dir(d), inside(inside), transmittance(t){}
     bool inside;
     vec3 pos;
     vec3 dir;
+    vec3 transmittance;
 };
 
 class Raytracer
 {
 public:
     Raytracer(){}
-    vec3 trace(const Ray &r, int depth);
-    bool inShadow(vec3 isxPos, vec3 lightPos);
-    std::atomic<int> numRayTrianglesTests;
+    vec3 trace(Ray &r, int depth);
+    bool inShadow(vec3 isxPos, vec3 lightPos, Geometry* geom);
+    
 };
 
 class Scene
@@ -133,7 +135,7 @@ public:
     int getHeight(){return HEIGHT;}
     int getWidth(){return WIDTH;}
     float getFov(){return fov;}
-    vec3 getLightPos(){return lightPos;}
+    vec3 getLightPos();
     vector<Node *> nodes;
     void parseScene(string inFilePath);
     void printLinkInfoLog(int);
@@ -158,6 +160,7 @@ public:
     vec3 eye, center, up;
     vec3 lightPos;
     vec3 lightColor;
+
     float fov;
     Camera* camera;
     Film* film;
@@ -165,11 +168,14 @@ public:
     
     Raytracer* raytracer;
     stack<mat4> transformations;
+    bool isMonteCarlo;
+    int maxDepth;
+	void updateGlobalTransform(vector<Node*> nodes);
 
 private:
     ifstream inFilePointer;
     int WIDTH, HEIGHT;
-    int totalPrims, maxDepth;
+    int totalPrims;
     string inFilePath;
     Geometry* geometry;
     std::map<string,bool> geomTypes;
@@ -188,7 +194,7 @@ public:
 
     virtual ~Node(void);
     
-    Intersect intersect(stack<mat4> &transformations, const Ray &r);
+    Intersect intersect(const Ray &r);
     void draw(stack<mat4> transformations);
     void load();
     void initNode(Geometry* Geometry);
@@ -197,8 +203,8 @@ public:
     Node* getParentNode(){return parent;}
     void setParentNode(Node* NewParent);
     vector<Node*> getChildren(){return children;}
-    void setTransformation(mat4 transf){transformation = transf;}
-    mat4 getTransformation(){return transformation;}
+    void setTransformation(mat4 transf){localTransformation = transf;}
+    mat4 getTransformation(){return localTransformation;}
     mat4 getGlobalTransformation();
     Geometry* getGeometry(){return geometry;}
     string getNodeName(){return nodeName;}
@@ -208,12 +214,13 @@ public:
     const bool isLeafNode(void) const;
     vec3 color;
     vec3 tcolor;
+    mat4 globalTransformation;
     
 private:
     string nodeName;
     Node* parent;
     vector<Node*> children;
-    mat4 transformation;
+    mat4 localTransformation;
     Geometry* geometry;
 
 };

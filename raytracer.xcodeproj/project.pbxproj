@@ -45,6 +45,7 @@
 		12336CE61A16E7A9006D0C15 /* cornell.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = cornell.txt; sourceTree = "<group>"; };
 		12336CE71A16E7A9006D0C15 /* all_three.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = all_three.txt; sourceTree = "<group>"; };
 		12336CE81A16E7A9006D0C15 /* dragon.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = dragon.txt; sourceTree = "<group>"; };
+		12487D991A381392004E8C47 /* sampling.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sampling.h; sourceTree = "<group>"; };
 		12AA3BA01A0D3B70001C44B0 /* ray.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ray.cpp; sourceTree = "<group>"; };
 		12AA3BA21A0D3D5B001C44B0 /* EasyBMP.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = EasyBMP.cpp; path = raytracer/thirdparty/osx/easybmp/EasyBMP.cpp; sourceTree = SOURCE_ROOT; };
 		12DC2D441A34C8B800511885 /* bvh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bvh.h; sourceTree = "<group>"; };
@@ -165,6 +166,7 @@
 		12F6FC891A0A75CB00C986E3 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				12487D991A381392004E8C47 /* sampling.h */,
 				12DC2D441A34C8B800511885 /* bvh.h */,
 				120153B61A0EE52800BC2A81 /* tests.cpp */,
 				120153B71A0EE52800BC2A81 /* tests.h */,

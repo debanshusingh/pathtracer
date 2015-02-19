@@ -13,8 +13,8 @@ class Material
 public:
     string matName;
     vec3 diffColor, specColor;
-    float specExpo, ior;
-    bool isMirr, isTran;
+    float specExpo, ior, emittance;
+    bool isMirr, isTran, isEmit;
 };
 
 // An abstract base class for geometry in the scene graph.

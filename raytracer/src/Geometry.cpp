@@ -27,14 +27,6 @@ void Geometry::load(){
     vector<glm::vec3> normals = this->getNormals();
     vector<GLuint> indices = this->getIndices();
 
-//    vector<glm::vec3> VCN;
-//    
-//    for (int i=0;i<indices_.size();i++){
-//        VCN.push_back(vertices.at(indices_.at(i)));
-//        VCN.push_back(colors.at(indices_.at(i)));
-//        VCN.push_back(normals.at(indices_.at(i)));
-//    }
-
     // bind the VBO and VAO
     glGenVertexArrays(1, &this->vao);
     glBindVertexArray(this->vao);
@@ -42,10 +34,6 @@ void Geometry::load(){
     glGenBuffers(1, &this->vboPos);
     glBindBuffer(GL_ARRAY_BUFFER, this->vboPos);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
-//    glGenBuffers(1, &this->vbo);
-//    glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
-//    glBufferData(GL_ARRAY_BUFFER, VCN.size() * sizeof(glm::vec3), &VCN[0], GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(scene->locationPos);
     glVertexAttribPointer(scene->locationPos, 3, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -125,15 +113,6 @@ Intersect Geometry::intersect(const glm::mat4 &T, Ray ray_world)
     
     // The final output intersection data is in WORLD-space.
     return isx;
-}
-
-vec3 Geometry::hit(Intersect itrsct) const {
-    vec3 finalColor(0,0,0);
-    if (!itrsct.hit) return finalColor;
-    
-    finalColor += itrsct.normal;
-    
-    return finalColor;
 }
 
 BBox::BBox(vec3 m, vec3 M) {

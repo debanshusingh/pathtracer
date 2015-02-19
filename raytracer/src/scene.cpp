@@ -13,6 +13,7 @@
 #include "Mesh.h"
 #include "Intersect.h"
 #include "bvh.h"
+#include "sampling.h"
 #include <iomanip>
 
 Scene::Scene(){
@@ -76,24 +77,28 @@ void Scene::parseScene(string inFilePath){
                     camera->setFrame();
 
                     //  enable preview lighting
-                    lightPos = vec3(0,9,0);
-                    lightColor = vec3(1,1,1);
 
                 }
-                
-//                else if(strcmp(tokens[0].c_str(), "LIGHT")==0){
-//
-//                    utilityCore::safeGetline(inFilePointer, line);
-//                    cout<<line<<endl;
-//                    tokens = utilityCore::tokenizeString(line);
-//                    if (strcmp(tokens[0].c_str(), "LPOS")==0){
-//                    }
-//                    utilityCore::safeGetline(inFilePointer, line);
-//                    cout<<line<<endl;
-//                    tokens = utilityCore::tokenizeString(line);
-//                    if (strcmp(tokens[0].c_str(), "LCOL")==0){
-//                    }
-//                }
+
+                else if(strcmp(tokens[0].c_str(), "MONTECARLO")==0){
+                    scene->isMonteCarlo = bool(stoi(tokens[1]));
+                }
+
+                else if(strcmp(tokens[0].c_str(), "LIGHT")==0){
+
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "LPOS")==0){
+                        lightPos = vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
+                    }
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "LCOL")==0){
+                        lightColor = vec3(stof(tokens[1]), stof(tokens[2]), stof(tokens[3]));
+                    }
+                }
 
                 else if(strcmp(tokens[0].c_str(), "MAT")==0){
                     
@@ -137,6 +142,14 @@ void Scene::parseScene(string inFilePath){
                     tokens = utilityCore::tokenizeString(line);
                     if (strcmp(tokens[0].c_str(), "TRAN")==0){
                         material.isTran = bool(stoi(tokens[1]));
+                    }
+                    utilityCore::safeGetline(inFilePointer, line);
+                    cout<<line<<endl;
+                    tokens = utilityCore::tokenizeString(line);
+                    if (strcmp(tokens[0].c_str(), "EMIT")==0){
+                        material.emittance = stof(tokens[1]);
+                        if (material.emittance > 0) material.isEmit = true;
+                        else material.isEmit = false;
                     }
                     
                     matDict[matName] = material;
@@ -255,6 +268,7 @@ void Scene::parseScene(string inFilePath){
                         newNode->setColor(color);
                         this->addNode(newNode);
                     }
+                
                 }
                 else if (strcmp(tokens[0].c_str(), "OUTPUT")==0){
                     outFilePath = tokens[1];
@@ -274,32 +288,78 @@ void Scene::render(){
     clock_t timeStart = clock();
     film = new Film();
     raytracer = new Raytracer();
-    int superSamples = 4;
-    
+    updateGlobalTransform(nodes);
+	
+	int percentComplete = 0;
+	
+	//increase/decrease sampleCount appropriately for anti-aliasing & monte-carlo
+	int sampleCount;
+	if (isMonteCarlo) sampleCount = 100; //monte-carlo iterations
+	else sampleCount = 4; //anti-aliasing supersampling
+	
+	//====================//
+	// NEW LESSON LEARNED //
+	//====================//
+	// How I solved the multithreading race condition and slow recursion? - 
+	// Slow recursion was being caused by the shared transformStack
+	// Thought about the variable being shared and how it slowed recursion - traversing scenegraph every intersection was inefficient
+	// Solved by pre-processing global transformation.
+	// IMPACT - increased speed +10X and removed race condition 
+	
+	#pragma omp parallel for
     for (int i = 0; i < HEIGHT; i++) {
-        cout << "\r[raytracer] " << ((i+1)*100)/HEIGHT << "% completed       " << flush;
-        #pragma omp parallel for
         for (int j = 0; j < WIDTH; j++) {
             vec3 pixelColor(0,0,0);
-            for (int k =0; k<superSamples; k++){
+            for (int k =0; k<sampleCount; k++){
+				// jittered supersampling
                 float randJitter = (float) rand()/RAND_MAX;
                 vec2 pixel = vec2(i+randJitter, j+randJitter);
                 Ray ray = camera->generateRay(pixel);
-                pixelColor += raytracer->trace(ray, scene->maxDepth);
+                vec3 returnColor = raytracer->trace(ray, scene->maxDepth);
+				pixelColor += returnColor;
             }
-            pixelColor /= superSamples;
-            
+            pixelColor /= sampleCount;
+            pixelColor = glm::clamp(pixelColor, vec3(0.0f), vec3(1.0f));
             uvec2 pixel = uvec2(i,j);
             film->put(pixel, pixelColor);
         }
+	
+		#pragma omp critical(percentComplete)
+		percentComplete++;
+		if (percentComplete % 11 == 10) cout << "\r[raytracer] " << ((percentComplete)*100)/(float)HEIGHT << "% completed       " << flush;
     }
+
     film->writeImage(outFilePath);
-    
     clock_t timeEnd = clock();
     cout<<"[raytracer] Render Successful. Output Image Path - "<<outFilePath<<endl;
     cout<<"[raytracer] Render time - "<< setprecision(5) << (float)(timeEnd - timeStart) / CLOCKS_PER_SEC << " (sec)\n"<<endl;
     
 }
+
+vec3 Scene::getLightPos(){
+	// assume 1 area light in scene
+	// lightNode contains that area light
+	string lightName = "light";
+	auto index = std::distance(nodes.begin(),
+                                                   std::find_if(nodes.begin(),
+                                                                nodes.end(),
+                                                                [lightName](Node* obj) {return obj->getNodeName() == lightName;}));
+
+	Node* areaLightNode = nodes.at(index);
+	
+	if (areaLightNode->getGeometry()->getGeometryType() == Geometry::geometryType::CUBE){
+		vec3 lightPos = getRandomPointOnCube(areaLightNode);
+		scene->lightColor = areaLightNode->getGeometry()->material.diffColor;
+		return lightPos;
+	}
+    else {
+		vec3 lightPos = getRandomPointOnSphere(areaLightNode);
+		scene->lightColor = areaLightNode->getGeometry()->material.diffColor;
+		return lightPos;
+	}
+		
+}
+    
 
 void Scene::addNode(Node* node)
 {
@@ -536,7 +596,7 @@ void Node::load(){
 
 void Node::draw(stack<mat4> transformations){
     
-    transformations.push(transformations.top()*this->transformation);
+    transformations.push(transformations.top()*this->localTransformation);
 
     /*******************/
     // PREORDER TRAVERSAL//
@@ -592,31 +652,38 @@ void Node::draw(stack<mat4> transformations){
     transformations.pop();
 }
 
-Intersect Node::intersect(stack<mat4> &transformations, const Ray &r){
+void Scene::updateGlobalTransform(vector<Node*> nodes){
+	typedef vector<Node *>::iterator node_itr;
+	node_itr i = nodes.begin();
+    node_itr end = nodes.end();
+	for(;i != end; i ++) {
+		(*i)->globalTransformation = (*i)->getGlobalTransformation();
+	}
+}
+
+Intersect Node::intersect(const Ray &r){
     
-    transformations.push(transformations.top()*this->transformation);
-    glm::mat4 model = transformations.top();
+	glm::mat4 model = this->globalTransformation;
     Intersect isx;
     if (this->geometry != NULL)
         isx = this->geometry->intersect(model, r);
     
     if (this->children.size() > 0){
         for(int i=0; i < children.size(); i++){
-            Intersect childIsx = children.at(i)->intersect(transformations, r);
+            Intersect childIsx = children.at(i)->intersect(r);
             if (isx.t==-1 || (childIsx.t < isx.t)){
                 if (childIsx.t>=0) isx = childIsx;
             }
         }
     }
-    transformations.pop();
     return isx;
 }
 
 mat4 Node::getGlobalTransformation(){
     if (this->parent == NULL) {
-        return mat4(1.0f);
+        return this->localTransformation;
     }
-    else return this->transformation*this->getParentNode()->getGlobalTransformation();
+    else return this->localTransformation*this->getParentNode()->getGlobalTransformation();
 }
 
 const bool Node::isRootNode(void) const
