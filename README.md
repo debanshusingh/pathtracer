@@ -1,16 +1,10 @@
 ===========
-Scene Graph
+Pathtracer
 ===========
 
 Assignment HW3c
 Created by Debanshu Singh
 12/08/2014
-
-=================
-External Sources 
-=================
-UtilityCore from Yining Karl Li's TAKUA render - http://www.yiningkarlli.com for Safegetline
-Design based on Raytracer Design Note - http://inst.eecs.berkeley.edu/~cs184/fa09/resources/raytracing.htm
 
 =================
 USAGE
@@ -80,3 +74,10 @@ class Mesh
     - added BVH creation (EXTRA CREDIT)
 class Camera
     - provides camera information for calculating lookAt
+
+=================
+External Sources 
+=================
+UtilityCore from Yining Karl Li's TAKUA render - http://www.yiningkarlli.com for Safegetline
+Design based on Raytracer Design Note - http://inst.eecs.berkeley.edu/~cs184/fa09/resources/raytracing.htm
+
