@@ -223,16 +223,18 @@ void Scene::parseScene(string inFilePath){
                             geomTypes["CYLINDER"] = true;
                         }
                         else if (strcmp(tokens[1].c_str(), "mesh")==0){
-                            geometry = new Mesh();
+                            Mesh* mesh = new Mesh();
+                            geometry = static_cast<Geometry*>(mesh);
                             utilityCore::safeGetline(inFilePointer, line);
                             cout<<line<<endl;
                             tokens = utilityCore::tokenizeString(line);
+                            
                             if (strcmp(tokens[0].c_str(), "FILE")==0){
                                 string objFilePath = "scenes/" + tokens[1];
-                                parseObj(geometry, objFilePath);
+                                parseObj(mesh, objFilePath, mesh->triangleList);
                             }
-                            geometry->tree = createBVH(geometry->triangleList, 0);
-                            cout<<"[raytracer] Built BVH acceleration structure"<<endl;
+                            cout<<"[raytracer] Building BVH acceleration structure"<<endl;
+                            mesh->tree = new BVH(mesh->triangleList,1,"middle");
                         }
                     }
                     
@@ -295,7 +297,7 @@ void Scene::render(){
 	//increase/decrease sampleCount appropriately for anti-aliasing & monte-carlo
 	int sampleCount;
 	if (isMonteCarlo) sampleCount = 100; //monte-carlo iterations
-	else sampleCount = 4; //anti-aliasing supersampling
+	else sampleCount = 1; //anti-aliasing supersampling
 	
 	//====================//
 	// NEW LESSON LEARNED //
@@ -696,48 +698,7 @@ const bool Node::isLeafNode(void) const
     return (children.size() == 0);
 }
 
-BBox BBox::combine(BBox other){
-    vec3 m, M;
-    for (int i = 0; i < 3; i ++) {
-        m[i] = std::min(this->bBoxMin[i], other.bBoxMin[i]);
-        M[i] = std::max(this->bBoxMax[i], other.bBoxMax[i]);
-    }
-    return BBox(m, M);
-}
-
-bool BBox::isHit(Ray ray) const{
-
-    float tnear = - numeric_limits<float>::max();
-    float tfar = numeric_limits<float>::max();
-    float t1,t2,temp;
-
-    for(int i =0 ;i < 3; i++){
-        if(ray.dir[i] == 0){
-            if(ray.pos[i] < bBoxMin[i] || ray.pos[i] > bBoxMax[i])
-                return false;
-        }
-        else{
-            t1 = (bBoxMin[i] - ray.pos[i])/ray.dir[i];
-            t2 = (bBoxMax[i] - ray.pos[i])/ray.dir[i];
-            if(t1 > t2){
-                temp = t1;
-                t1 = t2;
-                t2 = temp;
-            }
-            if(t1 > tnear)
-                tnear = t1;
-            if(t2 < tfar)
-                tfar = t2;
-            if(tnear > tfar)
-                return false;
-            if(tfar < 0)
-                return false;
-        }
-    }
-    return true;
-}
-
-void Scene::parseObj(Geometry* geom, string inFilePath){
+void Scene::parseObj(Mesh* mesh, const string &inFilePath, vector<Geometry*> &triangleList){
     
 //    if code reaches here, it means we have a mesh
     
@@ -768,13 +729,13 @@ void Scene::parseObj(Geometry* geom, string inFilePath){
                         GLuint trueIndex = static_cast<GLuint>(stoi(s)-1); // -1 to account for OBJ offset of +1
                         vertexIndex[i-1] = trueIndex;
                         temp_indices.push_back(trueIndex);
-                        geom->vertices_.push_back(temp_vertices[trueIndex]);
+                        mesh->vertices_.push_back(temp_vertices[trueIndex]);
                     }
                     vec3 faceNormal = glm::cross((temp_vertices[vertexIndex[1]] - temp_vertices[vertexIndex[0]]),
                                                  (temp_vertices[vertexIndex[2]] - temp_vertices[vertexIndex[0]]));
                     // add face_normal contribution to vertexNormal in a std:map and store trueindices in a vector
                     for (int i=0; i<3; i++){
-                        geom->normals_.push_back(faceNormal); // add facenormal value to each vertex
+                        mesh->normals_.push_back(faceNormal); // add facenormal value to each vertex
                         temp_vertexNormals.at(vertexIndex[i]) += faceNormal;
                     }
                 }
@@ -783,17 +744,17 @@ void Scene::parseObj(Geometry* geom, string inFilePath){
     }
     objFilePointer.close();
 
-    for ( int i=0; i<geom->vertices_.size(); i++) {
+    for ( int i=0; i<mesh->vertices_.size(); i++) {
         //        normals_.at(i) = glm::normalize(normals_.at(i)); // flat shading
-        geom->normals_.at(i) = glm::normalize(temp_vertexNormals.at(temp_indices.at(i))); // smooth shading
-        geom->indices_.push_back(i);
+        mesh->normals_.at(i) = glm::normalize(temp_vertexNormals.at(temp_indices.at(i))); // smooth shading
+        mesh->indices_.push_back(i);
     }
 
-    unsigned int trianglesInMesh = geom->getIndexCount()/3;
+    unsigned int trianglesInMesh = mesh->getIndexCount()/3;
     for (int i=0; i<trianglesInMesh; i++) {
-        vec3 v0 = geom->vertices_.at(geom->indices_.at(3*i));
-        vec3 v1 = geom->vertices_.at(geom->indices_.at(3*i+1));
-        vec3 v2 = geom->vertices_.at(geom->indices_.at(3*i+2));
+        vec3 v0 = mesh->vertices_.at(mesh->indices_.at(3*i));
+        vec3 v1 = mesh->vertices_.at(mesh->indices_.at(3*i+1));
+        vec3 v2 = mesh->vertices_.at(mesh->indices_.at(3*i+2));
         
         vec3 boxMin, boxMax;
         for(int i=0; i<3; i++){
@@ -804,7 +765,7 @@ void Scene::parseObj(Geometry* geom, string inFilePath){
         Triangle* tri = new Triangle(v0, v1, v2);
         tri->bbox = triBbox;
 
-        geom->triangleList.push_back(tri);
+        triangleList.push_back(tri);
     }
     
 }

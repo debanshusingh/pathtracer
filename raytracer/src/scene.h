@@ -43,7 +43,9 @@ class Film;
 class Raytracer;
 class Intersect;
 class Material;
-class BVHNode;
+class BVH;
+class BBox;
+class Mesh;
 
 // Global scene
 extern Scene* scene;
@@ -86,17 +88,6 @@ public:
     
 private:
     vector<vector<vec3>> pixels;
-};
-
-class BBox {
-public:
-    BBox(){}
-    BBox(vec3 b1, vec3 b2);
-    BBox combine(BBox other);
-    vec3 bBoxMin, bBoxMax;
-    vec3 midpoint(){return 0.5f*(bBoxMax + bBoxMin);}
-    bool isHit(Ray r) const;
-    
 };
 
 class Ray
@@ -144,7 +135,7 @@ public:
     string textFileRead(const char*);
     void initShader();
     void cleanup();
-    void parseObj(Geometry* geom, string inFilePath);
+    void parseObj(Mesh* mesh, const string &inFilePath, vector<Geometry*> &triangleList);
     
     GLuint shaderProgram;
     GLuint locationPos;
@@ -164,7 +155,7 @@ public:
     float fov;
     Camera* camera;
     Film* film;
-    BVHNode* tree;
+//    BVH* tree;
     
     Raytracer* raytracer;
     stack<mat4> transformations;

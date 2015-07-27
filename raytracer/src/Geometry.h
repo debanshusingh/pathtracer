@@ -3,10 +3,30 @@
 
 #include <vector>
 #include "scene.h"
-#include "Intersect.h"
-
 
 using namespace std;
+
+class BBox {
+public:
+    BBox(){}
+    BBox(vec3 b1, vec3 b2);
+    BBox combine(const BBox &b);
+    BBox combine(const vec3 &p);
+    
+    vec3 bBoxMin, bBoxMax;
+    vec3 centroid(){return 0.5f*(bBoxMax + bBoxMin);}
+    bool isHit(Ray r) const;
+    int maximumExtent() const {
+        vec3 diag = bBoxMax - bBoxMin;
+        if (diag.x>diag.y && diag.x > diag.z)
+            return 0;
+        else if (diag.y > diag.z)
+            return 1;
+        else
+            return 2;
+    }
+    
+};
 
 class Material
 {
@@ -16,6 +36,36 @@ public:
     float specExpo, ior, emittance;
     bool isMirr, isTran, isEmit;
 };
+
+class Intersect {
+public:
+    // The parameter `t` along the ray which was used. (A negative value indicates no intersection.)
+    Intersect() : t(-1.0f), normal(glm::vec3(0,0,0)), hit(false) {}
+    Intersect(float t, glm::vec3 n) : t(t), normal(n), hit(true) {}
+    
+    glm::vec3 normal;
+    float t;
+    bool hit;
+    Geometry *geom;
+};
+
+// scratch-a-pixel
+template<typename T>
+bool solveQuadratic(const T &a, const T &b, const T &c, T &x0, T &x1)
+{
+    T discr = b * b - 4 * a * c;
+    if (discr < 0) return false;
+    else if (discr == 0) x0 = x1 = - 0.5 * b / a;
+    else {
+        T q = (b > 0) ?
+        -0.5 * (b + sqrt(discr)) :
+        -0.5 * (b - sqrt(discr));
+        x0 = q / a;
+        x1 = c / q;
+    }
+    if (x0 > x1) std::swap(x0, x1);
+    return true;
+}
 
 // An abstract base class for geometry in the scene graph.
 class Geometry
@@ -35,7 +85,6 @@ public:
     GLuint vboIdx;
     BBox bbox;
     vector<Geometry* > triangleList;
-    BVHNode* tree;
 
     
     // Getters
@@ -85,9 +134,9 @@ public:
     virtual ~Geometry();
     // Function for building vertex data, i.e. vertices, colors, normals, indices.
     // Implemented in Sphere and Cylinder.
-    virtual void buildGeometry() = 0;
+    virtual void buildGeometry(){};
     /// Compute an intersection with an OBJECT-LOCAL-space ray.
-    virtual Intersect intersectImpl(const Ray &ray) const = 0;
+    virtual Intersect intersectImpl(const Ray &ray) const {return Intersect();};
     Material material;
 };
 

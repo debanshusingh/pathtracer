@@ -5,7 +5,7 @@ Geometry::Geometry(geometryType geomType) :
 {
 }
 
-Geometry::~Geometry()
+ Geometry::~Geometry()
 {
     vertices_.clear();
     normals_.clear();

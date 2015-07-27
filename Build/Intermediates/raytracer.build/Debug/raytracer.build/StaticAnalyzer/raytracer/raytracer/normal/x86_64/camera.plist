@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
  <key>clang_version</key>
-<string>Apple LLVM version 6.0 (clang-600.0.56) (based on LLVM 3.5svn)</string>
+<string>Apple LLVM version 6.1.0 (clang-602.0.53) (based on LLVM 3.6.0svn)</string>
  <key>files</key>
  <array>
  </array>

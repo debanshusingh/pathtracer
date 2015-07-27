@@ -25,7 +25,7 @@ void Mesh::buildGeometry()
 }
 
 Intersect Mesh::intersectImpl(const Ray &ray) const {
-    return tree->intersectImpl(ray);
+    return tree->root->intersectImpl(ray);
 }
 
 Intersect Triangle::intersectImpl(const Ray &ray) const

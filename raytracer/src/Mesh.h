@@ -9,7 +9,7 @@
 #ifndef __raytracer__Mesh__
 #define __raytracer__Mesh__
 
-#include "Geometry.h"
+#include "bvh.h"
 
 class Triangle : public Geometry
 {
@@ -23,19 +23,19 @@ public:
     vec3 v0,v1,v2;
 };
 
-class BVHNode : public Geometry
-{
-public:
-    BVHNode(BBox b, Geometry* left, Geometry* right): left(left), right(right), Geometry(BVHNODE) {bbox = b;}
-    
-    virtual ~BVHNode(){};
-    virtual void buildGeometry(){};
-    virtual Intersect intersectImpl(const Ray &ray) const;
-    Geometry* left;
-    Geometry* right;
-    BBox bbox;
-    
-};
+//class BVHNode : public Geometry
+//{
+//public:
+//    BVHNode(BBox b, Geometry* left, Geometry* right): left(left), right(right), Geometry(BVHNODE) {bbox = b;}
+//    
+//    virtual ~BVHNode(){};
+//    virtual void buildGeometry(){};
+//    virtual Intersect intersectImpl(const Ray &ray) const;
+//    Geometry* left;
+//    Geometry* right;
+//    BBox bbox;
+//    
+//};
 
 class Mesh : public Geometry
 {
@@ -44,6 +44,8 @@ public:
     virtual ~Mesh();
     virtual void buildGeometry();
     virtual Intersect intersectImpl(const Ray &ray) const;
+    vector<Geometry* > triangleList;
+    BVH* tree;
         
 };
 

@@ -9,98 +9,130 @@
 #ifndef raytracer_bvh_h
 #define raytracer_bvh_h
 
-#include "Intersect.h"
+#include "Geometry.h"
 
-typedef vector<Geometry *>::iterator node_itr;
+class BVH;
+class BVHNode;
 
-BBox combineBoundingBoxes(vector<Geometry *> &triangleList) {
-    node_itr i = triangleList.begin();
-    node_itr end = triangleList.end();
-    BBox b = (*i)->bbox;
-    i ++;
-    for (; i != end; i ++) {
-        b = b.combine((*i)->bbox);
+
+struct BVHPrimitiveInfo{
+    BVHPrimitiveInfo(int pn, const BBox &b):primitiveNumber(pn), bounds(b){
+        centroid = 0.5f*(b.bBoxMin + b.bBoxMax);
     }
-    return b;
-}
+    int primitiveNumber;
+    glm::vec3 centroid;
+    BBox bounds;
+};
 
-void partition(vector<Geometry *> &nodes, vec3 mid, int axis,
-               vector<Geometry *> &left, vector<Geometry *> &right) {
-    node_itr i = nodes.begin();
-    node_itr end = nodes.end();
-    for (; i != end; i ++) {
-        if ((*i)->bbox.bBoxMax[axis] < mid[axis])
-            left.push_back(*i);
-        else
-            right.push_back(*i);
-        // recursion doesn't converge - why? - think about tree height
-//        else if ((*i)->bbox.bBoxMin[axis] < mid[axis] && (*i)->bbox.bBoxMax[axis] > mid[axis]){
-//            left.push_back(*i);
-//            right.push_back(*i);
-//        }
-    }
-    if (left.size() == nodes.size()) {
-        right.push_back(left.back());
-        left.pop_back();
-    }
-    else if (right.size() == nodes.size()) {
-        left.push_back(right.back());
-        right.pop_back();
-    }
-}
-BVHNode* createBVH(vector<Geometry* > &triangleList, int axis) {
-    int n = (int)triangleList.size();
+struct LinearBVHNode{
+    BBox bounds;
+    union {
+        uint32_t primitivesOffset;  //leaf
+        uint32_t secondChildOffset; //interior
+    };
+    uint8_t nPrimitives;            // 0 => interior node
+    uint8_t axis;                   // interior node partition axis - xyz
+    uint8_t pad[2];                 // ensure 32 byte total size
+};
 
-    if (n == 0) {
-        return NULL;
-    } else if (n == 1) {
-        return new BVHNode(triangleList[0]->bbox, triangleList[0], NULL);
-    } else if (n == 2) {
-        BBox b = triangleList[0]->bbox.combine(triangleList[1]->bbox);
-        return new BVHNode(b, triangleList[0], triangleList[1]);
-    } else {
-        BBox b = combineBoundingBoxes(triangleList);
-        vec3 mid = b.midpoint();
-        vector<Geometry *> leftList, rightList;
-        partition(triangleList, mid, axis, leftList, rightList);
-        BVHNode *leftTree, *rightTree;
-        leftTree = createBVH(leftList, (axis + 1) % 3);
-        rightTree = createBVH(rightList, (axis + 1) % 3);
-//        utilityCore::printVec3(b.bBoxMax);
-        return new BVHNode(b, leftTree, rightTree);
-    }
-}
-
-Intersect BVHNode::intersectImpl(const Ray &r) const{
-    if (!bbox.isHit(r))
-        return Intersect();
-    Intersect leftI = Intersect();
-    Intersect rightI = Intersect();
-    double distL, distR;
-
-    if (left != NULL)
-        leftI = left->intersectImpl(r);
-
-    if (right != NULL)
-        rightI = right->intersectImpl(r);
+class BVH:public Geometry{
+public:
+    BVH(const std::vector<Geometry*> &p, uint32_t maxPrims=1, const string &sM ="sah");
     
-    if (leftI.hit && rightI.hit) {
-        distL = (r.dir*leftI.t).length();
-        distR = (r.dir*rightI.t).length();
-        if (distL < distR)
-            return leftI;
-        else
-            return rightI;
-        
-    } else if (leftI.hit) {
-        return leftI;
-        
-    } else if (rightI.hit) {
-        return rightI;
-        
-    } else {
-        return Intersect();
-    }
-}
+    uint32_t maxPrimsInNode;
+    enum SplitMethod {SPLIT_MIDDLE, SPLIT_EQUAL_COUNTS, SPLIT_SAH};
+    SplitMethod splitMethod;
+    std::vector<Geometry*> primitives;
+    std::vector<Geometry*> orderedPrims;
+    std::vector<BVHPrimitiveInfo> buildData;
+    uint32_t totalNodes;
+    BVHNode* root;
+    LinearBVHNode* nodes;
+    
+    BVHNode* recursiveBuild(vector<BVHPrimitiveInfo> &buildData, uint32_t start, uint32_t end, uint32_t *totalNodes, vector<Geometry*> &orderedPrims);
+    uint32_t flattenBVHTree(BVHNode* node, uint32_t *offset);
+};
+
+
+class BVHNode{
+public:
+    BBox bounds;
+    // binary BVH
+    BVHNode* left;
+    BVHNode* right;
+
+    uint32_t splitAxis, firstPrimOffset, nPrimitives;
+    Intersect intersectImpl(const Ray &r) const;
+    
+    BVHNode(){left = right = NULL;}
+    void initLeaf(uint32_t first, uint32_t n, const BBox &b);
+    void initInterior(uint32_t axis, BVHNode* lChild, BVHNode* rChild);
+
+};
+
+
+//
+//typedef vector<Geometry *>::iterator node_itr;
+//
+//BBox combineBoundingBoxes(vector<Geometry *> &triangleList) {
+//    node_itr i = triangleList.begin();
+//    node_itr end = triangleList.end();
+//    BBox b = (*i)->bbox;
+//    i ++;
+//    for (; i != end; i ++) {
+//        b = b.combine((*i)->bbox);
+//    }
+//    return b;
+//}
+//
+//void partition(vector<Geometry *> &nodes, vec3 mid, int axis,
+//               vector<Geometry *> &left, vector<Geometry *> &right) {
+//    node_itr i = nodes.begin();
+//    node_itr end = nodes.end();
+//    for (; i != end; i ++) {
+//        if ((*i)->bbox.bBoxMax[axis] < mid[axis])
+//            left.push_back(*i);
+//        else
+//            right.push_back(*i);
+//        // recursion doesn't converge - why? - think about tree height
+////        else if ((*i)->bbox.bBoxMin[axis] < mid[axis] && (*i)->bbox.bBoxMax[axis] > mid[axis]){
+////            left.push_back(*i);
+////            right.push_back(*i);
+////        }
+//    }
+//    if (left.size() == nodes.size()) {
+//        right.push_back(left.back());
+//        left.pop_back();
+//    }
+//    else if (right.size() == nodes.size()) {
+//        left.push_back(right.back());
+//        right.pop_back();
+//    }
+//}
+//
+//BVHNode* createBVH(vector<Geometry* > &triangleList, int axis) {
+//    int n = (int)triangleList.size();
+//
+//    if (n == 0) {
+//        return NULL;
+//    } else if (n == 1) {
+//        return new BVHNode(triangleList[0]->bbox, triangleList[0], NULL);
+//    } else if (n == 2) {
+//        BBox b = triangleList[0]->bbox.combine(triangleList[1]->bbox);
+//        return new BVHNode(b, triangleList[0], triangleList[1]);
+//    } else {
+//        BBox b = combineBoundingBoxes(triangleList);
+//        vec3 mid = b.midpoint();
+//        vector<Geometry *> leftList, rightList;
+//        partition(triangleList, mid, axis, leftList, rightList);
+//        BVHNode *leftTree, *rightTree;
+//        leftTree = createBVH(leftList, (axis + 1) % 3);
+//        rightTree = createBVH(rightList, (axis + 1) % 3);
+////        utilityCore::printVec3(b.bBoxMax);
+//        return new BVHNode(b, leftTree, rightTree);
+//    }
+//}
+//
+
 
 #endif

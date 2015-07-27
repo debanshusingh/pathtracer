@@ -64,6 +64,7 @@ dependencies: \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/thirdparty/osx/glm/glm/./core/func_noise.hpp \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/thirdparty/osx/glm/glm/core/func_noise.inl \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/thirdparty/osx/glm/glm/gtc/matrix_transform.hpp \
+  /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/thirdparty/osx/glm/glm/gtc/../glm.hpp \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/thirdparty/osx/glm/glm/gtc/matrix_transform.inl \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/utilities.h \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/thirdparty/osx/EasyBMP/EasyBMP.h \
@@ -72,9 +73,9 @@ dependencies: \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/thirdparty/osx/EasyBMP/EasyBMP_VariousBMPutilities.h \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/Sphere.h \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/Geometry.h \
-  /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/Intersect.h \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/Cylinder.h \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/Cube.h \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/Mesh.h \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/bvh.h \
+  /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/Intersect.h \
   /Users/debanshu/Dropbox/work/code/github/raytracer/raytracer/src/sampling.h
