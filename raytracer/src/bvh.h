@@ -48,9 +48,10 @@ public:
     uint32_t totalNodes;
     BVHNode* root;
     LinearBVHNode* nodes;
-    
+
     BVHNode* recursiveBuild(vector<BVHPrimitiveInfo> &buildData, uint32_t start, uint32_t end, uint32_t *totalNodes, vector<Geometry*> &orderedPrims);
     uint32_t flattenBVHTree(BVHNode* node, uint32_t *offset);
+    Intersect intersectImpl(const Ray &r) const;
 };
 
 
@@ -62,7 +63,6 @@ public:
     BVHNode* right;
 
     uint32_t splitAxis, firstPrimOffset, nPrimitives;
-    Intersect intersectImpl(const Ray &r) const;
     
     BVHNode(){left = right = NULL;}
     void initLeaf(uint32_t first, uint32_t n, const BBox &b);
@@ -94,11 +94,6 @@ public:
 //            left.push_back(*i);
 //        else
 //            right.push_back(*i);
-//        // recursion doesn't converge - why? - think about tree height
-////        else if ((*i)->bbox.bBoxMin[axis] < mid[axis] && (*i)->bbox.bBoxMax[axis] > mid[axis]){
-////            left.push_back(*i);
-////            right.push_back(*i);
-////        }
 //    }
 //    if (left.size() == nodes.size()) {
 //        right.push_back(left.back());

@@ -69,7 +69,7 @@ vec3 Raytracer::trace(Ray &r, int depth){
 
 					vec3 refrRayDir = glm::normalize(eta*I - (eta*nDotI + sqrt(rootTerm))*isx.normal);
 					vec3 refrRayOrigin = isxPos-0.01f*isx.normal;
-					Ray refrRay = Ray(refrRayOrigin, refrRayDir, !r.inside);
+					Ray refrRay = Ray(refrRayOrigin, refrRayDir, vec3(1,1,1), !r.inside);
 					refr = trace(refrRay, depth-1);
 				}
 
@@ -136,7 +136,7 @@ vec3 Raytracer::trace(Ray &r, int depth){
 					vec3 refrRayDir = glm::normalize(eta*I - (eta*nDotI + sqrt(rootTerm))*isx.normal);
 					vec3 refrRayOrigin = isxPos-0.01f*isx.normal;
 					vec3 refrRayTransmittance = r.transmittance*vec3(1,1,1);
-					Ray refrRay = Ray(refrRayOrigin, refrRayDir, !r.inside, refrRayTransmittance);
+					Ray refrRay = Ray(refrRayOrigin, refrRayDir, refrRayTransmittance, !r.inside);
 					return trace(refrRay, depth);
 				}
 			}

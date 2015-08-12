@@ -27,19 +27,21 @@ BBox BBox::combine(const vec3 &p){
 }
 
 bool BBox::isHit(Ray ray) const{
-    
+    // TODO: think about culling this by passing ray.tMax
     float tnear = - numeric_limits<float>::max();
     float tfar = numeric_limits<float>::max();
     float t1,t2,temp;
     
     for(int i =0 ;i < 3; i++){
+        float invRayDir = 1.f/ray.dir[i];
+        
         if(ray.dir[i] == 0){
             if(ray.pos[i] < bBoxMin[i] || ray.pos[i] > bBoxMax[i])
                 return false;
         }
         else{
-            t1 = (bBoxMin[i] - ray.pos[i])/ray.dir[i];
-            t2 = (bBoxMax[i] - ray.pos[i])/ray.dir[i];
+            t1 = (bBoxMin[i] - ray.pos[i])*invRayDir;
+            t2 = (bBoxMax[i] - ray.pos[i])*invRayDir;
             if(t1 > t2){
                 temp = t1;
                 t1 = t2;
@@ -199,34 +201,51 @@ void BVHNode::initInterior(uint32_t axis, BVHNode *lChild, BVHNode *rChild){
     nPrimitives = 0;
 }
 
-Intersect BVHNode::intersectImpl(const Ray &r) const{
-    if (!bounds.isHit(r))
-        return Intersect();
-    Intersect leftI = Intersect();
-    Intersect rightI = Intersect();
-    double distL, distR;
+Intersect BVH::intersectImpl(const Ray &r) const{
+
+    if (!nodes) return Intersect();
     
-    if (left != NULL)
-        leftI = left->intersectImpl(r);
+    uint32_t todoOffset = 0, nodeNum = 0;
+    uint32_t todo[64];
     
-    if (right != NULL)
-        rightI = right->intersectImpl(r);
+    Intersect closestIsx;
+    vec3 invDir(1.f/r.dir.x, 1.f/r.dir.y, 1.f/r.dir.z);
+    uint32_t dirIsNeg[3] = {invDir.x<0,invDir.y<0,invDir.z<0};
     
-    if (leftI.hit && rightI.hit) {
-        distL = (r.dir*leftI.t).length();
-        distR = (r.dir*rightI.t).length();
-        if (distL < distR)
-            return leftI;
-        else
-            return rightI;
-        
-    } else if (leftI.hit) {
-        return leftI;
-        
-    } else if (rightI.hit) {
-        return rightI;
-        
-    } else {
-        return Intersect();
+    while (true) {
+        const LinearBVHNode* node = &nodes[nodeNum];
+        if (node->bounds.isHit(r)) {
+            if (node->nPrimitives >0) {
+                // <intersect ray with primitives in leaf BVH node>
+                for (uint32_t i=0; i<node->nPrimitives; ++i) {
+                    Intersect isx = primitives[node->primitivesOffset+i]->intersectImpl(r);
+                    if (closestIsx.t==-1 || (isx.t < closestIsx.t)){
+                        if (isx.t >=0) {
+                            closestIsx = isx;
+                        }
+                    }
+                }
+                if (todoOffset == 0) break;
+                nodeNum = todo[--todoOffset];
+            }
+            else {
+                // <put far BVH node on todo stack, advance to near node>
+                if (dirIsNeg[node->axis]) {
+                    todo[todoOffset++] = nodeNum + 1;
+                    nodeNum = node->secondChildOffset;
+                }
+                else {
+                    todo[todoOffset++] = node->secondChildOffset;
+                    nodeNum = nodeNum + 1;
+                }
+            }
+        }
+        else {
+            if (todoOffset == 0) break;
+            nodeNum = todo[--todoOffset];
+        }
     }
+    
+    return closestIsx;
+    
 }

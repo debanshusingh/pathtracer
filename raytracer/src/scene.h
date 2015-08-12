@@ -50,7 +50,7 @@ class Mesh;
 // Global scene
 extern Scene* scene;
 
-
+static const float inf = std::numeric_limits<float>::infinity();
 static const float PI = 3.141592653589f;
 
 using namespace glm;
@@ -93,15 +93,16 @@ private:
 class Ray
 {
 public:
-    Ray(){transmittance = vec3(1,1,1);}
-    Ray(const glm::vec3 p, const glm::vec3 d) : pos(p), dir(d), inside(false){transmittance = vec3(1,1,1);}
-    Ray(const glm::vec3 p, const glm::vec3 d, const glm::vec3 t) : pos(p), dir(d), transmittance(t){}
-    Ray(const glm::vec3 p, const glm::vec3 d, bool inside) : pos(p), dir(d), inside(inside){transmittance = vec3(1,1,1);}
-    Ray(const glm::vec3 p, const glm::vec3 d, bool inside, const glm::vec3 t) : pos(p), dir(d), inside(inside), transmittance(t){}
+    Ray():tMax(inf),inside(false){}
+    Ray(const glm::vec3 p, const glm::vec3 d,
+        const glm::vec3 t=glm::vec3(1,1,1), bool inside=false,
+        float tMax=inf) : pos(p), dir(d), transmittance(t), inside(inside), tMax(tMax){}
+    
     bool inside;
     vec3 pos;
     vec3 dir;
     vec3 transmittance;
+    mutable float tMax;
 };
 
 class Raytracer
